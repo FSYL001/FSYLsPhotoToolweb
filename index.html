@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>风神翼龙 の 图片工具 — 转格式 & 调整尺寸</title>
+  <style>
+    /* background & page layout  */
+    :root{
+      --glass-bg: rgba(255,255,255,0.92);
+      --panel-bg: rgba(255,255,255,0.95);
+      --accent: #4CAF50;
+      --muted: #55616b;
+      --card-radius: 10px;
+    }
+    html,body{height:100%;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-image:url('https://www.helloimg.com/i/2025/02/11/67aac15b97398.jpg');background-size:cover;background-position:center;background-repeat:no-repeat;color:#111}
+    /* 固定头部：标题和头像按钮 */
+    header{
+      position:fixed;top:0;left:0;right:0;display:flex;justify-content:flex-end;align-items:center;padding:10px;z-index:30;
+    }
+    header h1{
+      position:absolute;left:10px;top:10px;margin:0;padding:10px 18px;border-radius:4px;background:rgba(0,0,0,0.48);color:#fff;font-size:28px;z-index:31;
+      box-shadow:0 2px 10px rgba(0,0,0,0.2);
+      font-weight:600;
+    }
+    .avatar{
+      width:52px;height:52px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.35);cursor:pointer;
+    }
+    #buttonContainer{
+      display:none;position:absolute;right:10px;top:72px;background:var(--glass-bg);padding:10px;border-radius:6px;border:1px solid rgba(0,0,0,0.08);z-index:31;
+      box-shadow:0 6px 20px rgba(0,0,0,0.18);
+    }
+    #buttonContainer button{display:block;margin:6px 0;padding:8px 12px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    /* 右下人物立绘 */
+    .character{position:fixed;right:0;bottom:0;max-height:90vh;pointer-events:none;z-index:10;opacity:1}
+    /* 左下链接 */
+    .bottom-links{position:fixed;left:10px;bottom:10px;display:flex;flex-direction:column;z-index:31}
+    .bottom-links a{color:#fff;background:rgba(0,0,0,0.5);padding:6px 10px;margin:6px 0;border-radius:6px;text-decoration:none;font-size:14px;display:inline-block}
+    .bottom-links a:hover{background:rgba(0,0,0,0.7)}
+    /* 中央主面板 */
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 18px;box-sizing:border-box;}
+    .panel{width:100%;max-width:1100px;background:var(--panel-bg);border-radius:14px;padding:18px;box-shadow:0 10px 40px rgba(2,6,23,0.25);backdrop-filter: blur(6px);z-index:20;position:relative}
+    .panel .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .mark{width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,#60c37a,#2ea44f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;box-shadow:0 6px 18px rgba(46,164,79,0.18)}
+    .brand h2{margin:0;font-size:20px}
+    .sub{color:var(--muted);font-size:13px}
+    /* layout grid */
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-top:14px}
+    @media (max-width:920px){ .grid{grid-template-columns:1fr} .mark{width:46px;height:46px} header h1{font-size:20px;padding:8px 12px} }
+    /* 左侧卡片 */
+    .card{background:linear-gradient(180deg,var(--glass-bg),rgba(255,255,255,0.88));padding:14px;border-radius:12px;border:1px solid rgba(0,0,0,0.04);box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    .drop{border:2px dashed rgba(0,0,0,0.06);border-radius:10px;padding:18px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent)}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;cursor:pointer;border:0}
+    .muted{color:var(--muted);font-size:13px}
+    label{display:block;font-size:13px;margin-bottom:6px}
+    input[type=file]{display:none}
+    select,input[type=number],input[type=range]{padding:8px;border:1px solid rgba(0,0,0,0.06);border-radius:8px;width:100%;box-sizing:border-box}
+    .option-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tag{background:#e9fff0;color:#196127;padding:6px 8px;border-radius:999px;font-weight:600;font-size:12px;display:inline-block}
+    /* 右侧预览 */
+    .preview-list{display:flex;flex-direction:column;gap:12px;max-height:520px;overflow:auto;padding-right:6px}
+    .preview-item{display:flex;gap:12px;align-items:center;border-radius:10px;padding:8px;border:1px solid rgba(0,0,0,0.04);background:rgba(255,255,255,0.85)}
+    .preview-item img{width:96px;height:96px;object-fit:cover;border-radius:8px}
+    .meta{flex:1}
+    .controls{display:flex;flex-direction:column;gap:8px}
+    .row{display:flex;gap:8px;align-items:center}
+    .small{font-size:13px;color:var(--muted)}
+    .danger{background:#ef4444}
+    footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>风神翼龙の本地图片工具</h1>
+    <img class="avatar" src="https://www.helloimg.com/i/2025/02/11/67aac53e2a2f6.jpg" alt="头像" id="avatarBtn" />
+    <div id="buttonContainer">
+      <button onclick="window.open('https://space.bilibili.com/450000657?spm_id_from=333.337.0.0','_blank')">跳转 B站 个人主页</button>
+      <button onclick="window.open('https://www.douyin.com/user/MS4wLjABAAAAzWfG071S0Ol0_wF3xT1i0oL5eSpPdiYZZY_gKib9S_M?from_tab_name=main','_blank')">跳转 抖音 个人主页</button>
+    </div>
+  </header>
+
+  <!-- 右下人物立绘 -->
+  <img class="character" src="https://www.helloimg.com/i/2025/02/11/67aac60fd9da2.png" alt="人物立绘">
+
+  <!-- 左下链接 -->
+  <div class="bottom-links">
+    <a href="https://fsyl001.sbs" target="_blank">返回首页</a>
+    <a href="https://qm.qq.com/q/Mh3D0giPCi" target="_blank">广告招租 · 合作联系</a>
+  </div>
+
+  <!-- 主面板 -->
+  <div class="wrap">
+    <div class="panel" role="main" aria-label="图片工具面板">
+      <div class="top">
+        <div class="brand">
+          <div class="mark">图</div>
+          <div>
+            <h2>FSYLの图片工具</h2>
+            <div class="sub">在线转换格式 · 调整像素 · 批量处理（本地）</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="tag">静态单文件 · 离线可用</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- 左侧控制 -->
+        <aside class="card">
+          <div>
+            <label class="small">上传图片</label>
+            <div id="dropzone" class="drop">
+              <p class="muted">拖拽图片到此处，或</p>
+              <label class="btn" for="fileInput">选择文件</label>
+              <input id="fileInput" type="file" accept="image/*" multiple />
+              <div class="small" style="margin-top:8px">支持 PNG / JPEG / WEBP / GIF / AVIF 等常见格式（页面本地处理）</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label class="small">输出格式</label>
+            <select id="outFormat">
+              <option value="image/png">PNG</option>
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WEBP</option>
+              <option value="image/avif">AVIF</option>
+            </select>
+          </div>
+
+          <div style="margin-top:10px">
+            <label class="small">质量 (仅 JPEG/WEBP/AVIF)</label>
+            <input id="quality" type="range" min="10" max="100" value="90" />
+            <div class="small"><span id="qv">90</span>%</div>
+          </div>
+
+          <div style="margin-top:10px">
+            <label class="small">调整尺寸 (px)</label>
+            <div class="row">
+              <input id="widthInput" type="number" placeholder="宽度 (px)" min="1" />
+              <input id="heightInput" type="number" placeholder="高度 (px)" min="1" />
+            </div>
+            <div class="row" style="margin-top:8px;align-items:center">
+              <input id="keepRatio" type="checkbox" checked /> <label class="small" for="keepRatio" style="margin:0 8px">保持宽高比</label>
+            </div>
+            <div class="small" style="margin-top:8px">预设： <button class="btn" id="preset150">150px</button> <button class="btn" id="preset300">300px</button></div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label class="small">高级选项</label>
+            <div class="option-grid">
+              <label class="small"><input type="checkbox" id="stripMeta" checked/> 去除元数据</label>
+              <label class="small"><input type="checkbox" id="fitContain" /> 保持原图完整（contain）</label>
+              <label class="small"><input type="checkbox" id="convertAll" checked/> 批量处理所有选中</label>
+              <label class="small"><input type="checkbox" id="downloadZip" /> 打包 ZIP (浏览器支持)</label>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="processBtn">开始处理</button>
+            <button class="btn" id="clearBtn" style="background:#64748b">清空</button>
+            <button class="btn" id="downloadAll" style="background:#0ea5a4">下载全部</button>
+          </div>
+
+          <div style="margin-top:12px" class="small muted">提示：此页面在现代浏览器中本地运行，图片不会上传到任何服务器。AVIF 导出取决于浏览器支持。</div>
+        </aside>
+
+        <!-- 右侧预览 -->
+        <section class="card" style="min-height:250px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h3 style="margin:0">预览 & 任务队列</h3>
+              <div class="small muted">可编辑每张图片的单独选项，或对全部图片进行批量处理</div>
+            </div>
+            <div class="small muted">已选：<span id="count">0</span></div>
+          </div>
+
+          <div style="margin-top:12px" class="preview-list" id="previewList"></div>
+
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn" id="removeSelected" style="background:#ef4444">删除所选</button>
+            <button class="btn" id="zipAll" style="background:#6b7280">打包 ZIP（若支持）</button>
+          </div>
+
+        </section>
+      </div>
+
+      <footer>版权归属 FSYLの小破站 |FSYL 的小破站 2025</footer>
+    </div>
+  </div>
+
+  <script>
+    // UI 元件
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const previewList = document.getElementById('previewList');
+    const outFormat = document.getElementById('outFormat');
+    const quality = document.getElementById('quality');
+    const qv = document.getElementById('qv');
+    const processBtn = document.getElementById('processBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const countEl = document.getElementById('count');
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+    const keepRatio = document.getElementById('keepRatio');
+    const preset150 = document.getElementById('preset150');
+    const preset300 = document.getElementById('preset300');
+    const removeSelected = document.getElementById('removeSelected');
+    const downloadAll = document.getElementById('downloadAll');
+    const zipAll = document.getElementById('zipAll');
+
+    const avatarBtn = document.getElementById('avatarBtn');
+    const buttonContainer = document.getElementById('buttonContainer');
+    avatarBtn.addEventListener('click', ()=>{ buttonContainer.style.display = buttonContainer.style.display === 'block' ? 'none' : 'block'; });
+
+    let images = []; // {file, src, img, width, height, selected}
+
+    function updateCount(){ countEl.textContent = images.length; }
+
+    quality.addEventListener('input', ()=> qv.textContent = quality.value);
+
+    // 拖拽
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = '#2ea44f'; });
+    dropzone.addEventListener('dragleave', e => { dropzone.style.borderColor = ''; });
+    dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.style.borderColor = ''; handleFiles(e.dataTransfer.files); });
+
+    fileInput.addEventListener('change', ()=> handleFiles(fileInput.files));
+
+    function handleFiles(fileList){
+      const arr = Array.from(fileList).filter(f => f.type && f.type.startsWith('image/'));
+      if(!arr.length) return;
+      arr.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ()=> {
+          const img = new Image();
+          img.onload = ()=> {
+            images.push({ file, src: reader.result, img, width: img.width, height: img.height, selected: true });
+            renderList();
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderList(){
+      previewList.innerHTML = '';
+      images.forEach((it, idx) => {
+        const div = document.createElement('div'); div.className = 'preview-item';
+        const thumb = document.createElement('img'); thumb.src = it.src;
+        const meta = document.createElement('div'); meta.className = 'meta';
+        meta.innerHTML = `<div style="font-weight:700">${escapeHtml(it.file.name)}</div>
+                          <div class="small muted">${it.width}×${it.height} • ${Math.round(it.file.size/1024)} KB</div>
+                          <div style="margin-top:8px" class="controls"></div>`;
+        const controls = meta.querySelector('.controls');
+
+        const w = document.createElement('input'); w.type='number'; w.value=it.width; w.min=1; w.style.width='120px';
+        const h = document.createElement('input'); h.type='number'; h.value=it.height; h.min=1; h.style.width='120px';
+        w.addEventListener('change', ()=> { it.width = parseInt(w.value) || it.img.width; if(keepRatio.checked){ it.height = Math.round(it.width / (it.img.width/it.img.height)); h.value = it.height; } });
+        h.addEventListener('change', ()=> { it.height = parseInt(h.value) || it.img.height; if(keepRatio.checked){ it.width = Math.round(it.height * (it.img.width/it.img.height)); w.value = it.width; } });
+
+        const sel = document.createElement('input'); sel.type='checkbox'; sel.checked = it.selected; sel.addEventListener('change', ()=> { it.selected = sel.checked; });
+
+        const selLabel = document.createElement('label'); selLabel.className = 'small muted'; selLabel.style.marginLeft='8px'; selLabel.textContent = '选中';
+
+        const fmt = document.createElement('select');
+        ['原始','PNG','JPEG','WEBP','AVIF'].forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; fmt.appendChild(o); });
+        fmt.value = '原始';
+
+        const downloadBtn = document.createElement('button'); downloadBtn.className='btn'; downloadBtn.style.padding='6px 8px'; downloadBtn.textContent='导出';
+        downloadBtn.addEventListener('click', ()=> processSingle(idx));
+
+        const removeBtn = document.createElement('button'); removeBtn.className='btn danger'; removeBtn.style.padding='6px 8px'; removeBtn.textContent='删除';
+        removeBtn.addEventListener('click', ()=> { images.splice(idx,1); renderList(); });
+
+        const row1 = document.createElement('div'); row1.className='row'; row1.appendChild(w); row1.appendChild(h); row1.appendChild(fmt);
+        const row2 = document.createElement('div'); row2.className='row'; row2.style.marginTop='8px'; row2.appendChild(sel); row2.appendChild(selLabel); row2.appendChild(downloadBtn); row2.appendChild(removeBtn);
+
+        controls.appendChild(row1); controls.appendChild(row2);
+
+        div.appendChild(thumb); div.appendChild(meta);
+        previewList.appendChild(div);
+      });
+      updateCount();
+    }
+
+    // 预设
+    preset150.addEventListener('click', ()=> { widthInput.value = 150; if(keepRatio.checked) heightInput.value = ''; });
+    preset300.addEventListener('click', ()=> { widthInput.value = 300; if(keepRatio.checked) heightInput.value = ''; });
+
+    clearBtn.addEventListener('click', ()=> { images = []; renderList(); });
+
+    // 主处理：遍历已选项
+    processBtn.addEventListener('click', async ()=> {
+      const tasks = images.filter(it => it.selected);
+      if(!tasks.length){ alert('没有选中图片'); return; }
+      for(const it of tasks){ await processImage(it); }
+      alert('处理完成');
+      renderList();
+    });
+
+    async function processSingle(idx){
+      const it = images[idx];
+      await processImage(it);
+      alert('导出完成');
+    }
+
+    // Canvas 调整并导出
+    async function processImage(item){
+      // per-item overrides: if widthInput/heightInput empty, use item's own; else use global inputs
+      let tw = parseInt(widthInput.value) || item.width;
+      let th = parseInt(heightInput.value) || item.height;
+      if(keepRatio.checked){
+        const ratio = item.img.width / item.img.height;
+        if(widthInput.value && !heightInput.value){ th = Math.round(tw / ratio); }
+        else if(heightInput.value && !widthInput.value){ tw = Math.round(th * ratio); }
+      }
+      const fitContain = document.getElementById('fitContain').checked;
+      const targetFormat = outFormat.value;
+      const q = parseInt(quality.value) / 100;
+
+      // ensure integers
+      tw = Math.max(1, Math.round(tw));
+      th = Math.max(1, Math.round(th));
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if(fitContain){
+        canvas.width = tw; canvas.height = th;
+        // white background
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        const r = Math.min(tw / item.img.width, th / item.img.height);
+        const dw = Math.round(item.img.width * r); const dh = Math.round(item.img.height * r);
+        const dx = Math.round((tw - dw) / 2); const dy = Math.round((th - dh) / 2);
+        ctx.drawImage(item.img, dx, dy, dw, dh);
+      } else {
+        canvas.width = tw; canvas.height = th;
+        ctx.drawImage(item.img, 0, 0, tw, th);
+      }
+
+      // export mime
+      const mime = targetFormat;
+      const blob = await new Promise(res => {
+        // some browsers ignore quality for png
+        canvas.toBlob(res, mime, q);
+      });
+      if(!blob){ alert('导出失败：浏览器可能不支持所选格式'); return; }
+
+      // 生成文件名
+      const name = item.file.name.replace(/\.[^/.]+$/, '');
+      const ext = mimeToExt(mime);
+      const outName = name + '.' + ext;
+
+      // 触发下载
+      const url = URL.createObjectURL(blob);
+      triggerDownload(url, outName);
+      setTimeout(()=> URL.revokeObjectURL(url), 60000);
+    }
+
+    function mimeToExt(mime){
+      if(mime === 'image/png') return 'png';
+      if(mime === 'image/jpeg') return 'jpg';
+      if(mime === 'image/webp') return 'webp';
+      if(mime === 'image/avif') return 'avif';
+      return 'img';
+    }
+
+    function triggerDownload(url, filename){
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // 删除所选
+    removeSelected.addEventListener('click', ()=> {
+      images = images.filter(it => !it.selected);
+      renderList();
+    });
+
+    // 下载全部（异步并发）
+    downloadAll.addEventListener('click', ()=> {
+      images.forEach(it => { if(it.selected) processImage(it); });
+    });
+
+    // 裁剪：未实现复杂裁剪（可扩展）
+    // 支持粘贴图片
+    window.addEventListener('paste', e => {
+      const items = e.clipboardData?.items || [];
+      const files = [];
+      for(const it of items){ if(it.type && it.type.startsWith('image/')) files.push(it.getAsFile()); }
+      if(files.length) handleFiles(files);
+    });
+
+    // 打包 ZIP（可选，若浏览器支持 JSZip 等需要外部lib，这里简单提示）
+    zipAll.addEventListener('click', ()=> {
+      alert('打包 ZIP 功能需要外部库 (如 JSZip)。如果需要我可以把 ZIP 功能加入并提供含库的单文件版本。');
+    });
+
+    // 点击预览图片在新标签打开
+    previewList.addEventListener('click', e => {
+      const img = e.target.closest('img');
+      if(!img) return;
+      window.open(img.src, '_blank');
+    });
+
+    // 防XSS：基础转义（文件名）
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    // 初始化
+    renderList();
+  </script>
+</body>
+</html>
